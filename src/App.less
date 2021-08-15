@@ -1,5 +1,37 @@
+@import '@/assets/css/common/font.less';
+
 #app {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+
+  #dodo {
+    foreignObject {
+      * {
+        pointer-events: none;
+        user-select: none;
+      }
+    }
+  }
+
+  .editor-container {
+    .editor {
+      position: fixed;
+      top: 0;
+      left: 0;
+      background-color: #ffffff;
+      border-radius: 4px;
+      visibility: hidden;
+      outline: none;
+      box-shadow: 0 0 4px 1px rgb(0, 0, 0, 0.4);
+      user-select: text;
+
+      > p {
+        .font16();
+        box-sizing: content-box;
+        padding: 4px 8px;
+      }
+    }
+  }
 }
