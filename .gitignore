@@ -1,0 +1,19 @@
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+.pnp.*
+
+node_modules
+
+# dist
+/dist
+/build
+
+# vscode
+.vscode/extensions.json
+
+# vite cache
+.cache
