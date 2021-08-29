@@ -1,6 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+import React, { FC, useEffect, useRef } from 'react';
 
-const Editor = () => {
+interface EditorProps {
+  id: number | null;
+}
+
+const Editor: FC<EditorProps> = (props) => {
+  const { id } = props;
   const p = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
@@ -18,7 +23,7 @@ const Editor = () => {
     <div className="editor-container">
       <div id="editor" className="editor" contentEditable="true" suppressContentEditableWarning={true}>
         <p ref={p} onInput={handleInput}></p>
-      </div>
+      </div>{id}
     </div>
   );
 };

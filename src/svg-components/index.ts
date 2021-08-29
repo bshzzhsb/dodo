@@ -1,6 +1,4 @@
-import * as d3 from 'd3';
-
-import { getTranslate } from '@/utils/style';
+import { getTransform, generateTransform } from '@/utils/style';
 import { toEven } from '@/utils/number';
 import { select } from '@/utils/dom';
 
@@ -13,70 +11,73 @@ export interface DodoProps {
 }
 
 class Dodo {
-  createDodoTimeline(dodoList: DodoProps[]) {
+  createDodoTimeline(dodoList: DodoProps[], onDblclick: (id: number) => void) {
     const dodo = select('#dodo');
     const todo = select('#todo');
     dodo
-      .on('wheel', (e) => {
-        d3.select('#editor').style('visibility', 'hidden');
-        const translate = getTranslate(todo.style('transform'));
-        todo.attr('transform', `translate(${translate[0] - e.deltaX}, ${translate[1] - e.deltaY})`);
+      .on('wheel', (e: WheelEvent) => {
+        if (e.ctrlKey) {
+          const { scale, skew, translate } = getTransform(todo.style('transform'));
+          if (e.deltaY !== 0) {
+            const deltaScale = e.deltaY < 0 ? (scale[0] > 0.1 ? -0.1 : 0) : 0.1;
+            todo.style('transform', generateTransform([scale[0] + deltaScale, scale[1] + deltaScale], skew, translate));
+          }
+        } else {
+          select('#editor').style('visibility', 'hidden');
+          const { scale, skew, translate } = getTransform(todo.style('transform'));
+          todo.style('transform', generateTransform(scale, skew, [translate[0] - e.deltaX, translate[1] - e.deltaY]));
+        }
       })
       .select('g')
-      .attr('transform', `translate(0, 0)`);
+      .style('transform', `matrix(1, 0, 0, 1, 0, 0)`);
     dodo.on('mousedown', () => {
-      // d3.select('#editor').style('visibility', 'hidden');
-      dodo.on('mousemove', (moveEvent) => {
-        const translate = getTranslate(todo.style('transform'));
+      const handleMoveEvent = (moveEvent: MouseEvent) => {
+        const { scale, skew, translate } = getTransform(todo.style('transform'));
         const { movementX, movementY } = moveEvent;
-        todo.attr('transform', `translate(${translate[0] + movementX}, ${translate[1] + movementY})`);
-      });
+        [translate[0], translate[1]] = [translate[0] + movementX, translate[1] + movementY];
+        todo.style(
+          'transform',
+          `matrix(${scale[0]},  ${skew[0]}, ${skew[1]}, ${scale[1]}, ${translate[0]}, ${translate[1]})`
+        );
+      };
+      dodo.on('mousemove', handleMoveEvent);
       dodo.on('mouseup', () => {
-        dodo.on('mousemove', null);
+        dodo.off('mousemove', handleMoveEvent);
       });
     });
-    // d3.select('.dodo-container')
-    //   .append('div')
-    //   .attr('class', 'editor-container')
-    //   .append('div')
-    //   .attr('class', 'editor blank')
-    //   .attr('id', 'editor')
-    //   .attr('contenteditable', true)
-    //   .append('p')
-    //   .text('');
 
-    d3.select('body')
+    select('body')
       .append('span')
       .attr('id', 'hidden-span')
       .style('position', 'absolute')
-      .style('white-space', 'nowrap')
+      .style('whiteSpace', 'nowrap')
       .style('visibility', 'hidden');
 
     dodoList.forEach((dodo, i) => {
-      this.createDodo(dodo, i);
+      this.createDodo(dodo, i, onDblclick);
     });
-    const { width: dodoWidth, height: dodoHeight } = (dodo.node() as SVGElement).getBoundingClientRect();
-    const { width: todoWidth, height: todoHeight } = (todo.node() as SVGGElement).getBBox();
-    todo.attr(
+    const { width: dodoWidth, height: dodoHeight } = dodo.selection.getBoundingClientRect();
+    const { width: todoWidth, height: todoHeight } = (todo.selection as SVGGElement).getBBox();
+    todo.style(
       'transform',
-      `translate(${toEven((dodoWidth - todoWidth) / 2)}, ${toEven((dodoHeight - todoHeight) / 2)})`
+      generateTransform([1, 1], [0, 0], [toEven((dodoWidth - todoWidth) / 2), toEven((dodoHeight - todoHeight) / 2)])
     );
   }
 
-  createDodo(dodo: DodoProps, i: number) {
-    let { width } = (d3.select('#hidden-span').text(dodo.content).node() as HTMLSpanElement).getBoundingClientRect();
+  createDodo(dodo: DodoProps, i: number, onDblclick: (id: number) => void) {
+    let { width } = select('#hidden-span').text(dodo.content).selection.getBoundingClientRect();
     width = toEven(width);
-    const g = d3
-      .select('#todo')
+    const g = select('#todo')
       .append('g')
-      .attr('transform', `translate(0, ${64 * i})`);
+      .style('transform', `translate(0, ${64 * i}px)`);
     g.on('dblclick', function (e) {
+      onDblclick(dodo.id);
       e.stopPropagation();
       e.preventDefault();
-      const translate = getTranslate(g.style('transform'));
-      const todoTranslate = getTranslate(d3.select('#todo').style('transform'));
+      const { translate } = getTransform(g.style('transform'));
+      const { translate: todoTranslate } = getTransform(select('#todo').style('transform'));
       console.log(e);
-      d3.select('#editor')
+      select('#editor')
         .style('left', `${translate[0] + todoTranslate[0] - 8}px`)
         .style('top', `${translate[1] + todoTranslate[1] - 15}px`)
         .style('visibility', 'visible')
@@ -84,19 +85,18 @@ class Dodo {
         .text(g.text());
       document.getElementById('editor')!.focus();
       document.execCommand('selectAll', false);
-      console.log(this);
     });
     g.append('path')
       .attr('stroke', '#ffffff')
       .attr('fill', '#ffffff')
       .attr('d', this.drawOutline(width))
-      .attr('stroke-width', 1)
-      .attr('stroke-dasharray', true);
+      .attr('stroke-width', '1')
+      .attr('stroke-dasharray', 'true');
     g.append('g')
-      .attr('transform', `translate(0, -11)`)
+      .style('transform', `translate(0, -11px)`)
       .append('foreignObject')
-      .attr('width', width)
-      .attr('height', 22)
+      .attr('width', `${width}`)
+      .attr('height', '22')
       .append('xhtml:div')
       .attr('class', 'todo-item-container')
       .append('p')
